@@ -3,6 +3,14 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 
+type SurveyQuestion = {
+  key: string
+  label: string
+  options?: string[]
+  type?: 'textarea'
+  category: string
+}
+
 export function StudentSurveyView() {
   const router = useRouter()
   const [step, setStep] = React.useState(0)
@@ -10,7 +18,7 @@ export function StudentSurveyView() {
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const SURVEY_QUESTIONS = [
+  const SURVEY_QUESTIONS: SurveyQuestion[] = [
     {
       key: 'academic_stress',
       label: 'How would you rate your academic stress level?',
@@ -49,32 +57,36 @@ export function StudentSurveyView() {
     },
   ]
 
-  const calculateScore = () => {
-    const scoreMap = {
-      'Very Low': 20,
-      'Very Unsatisfied': 20,
-      'Very Poor': 20,
-      Poor: 40,
-      Unsatisfied: 40,
-      Fair: 60,
-      Neutral: 60,
-      Low: 40,
-      Moderate: 60,
-      High: 40,
-      'Very High': 20,
-      Satisfied: 80,
-      'Very Satisfied': 100,
-      Good: 80,
-      Excellent: 100,
-    }
+  const scoreMap: Record<string, number> = {
+    'Very Low': 20,
+    'Low': 40,
+    'Moderate': 60,
+    'High': 40,
+    'Very High': 20,
 
+    'Very Unsatisfied': 20,
+    'Unsatisfied': 40,
+    'Neutral': 60,
+    'Satisfied': 80,
+    'Very Satisfied': 100,
+
+    'Very Poor': 20,
+    'Poor': 40,
+    'Fair': 60,
+    'Good': 80,
+    'Excellent': 100,
+  }
+
+  function calculateScore() {
     let totalScore = 0
     let count = 0
 
-    for (const key in answers) {
-      if (key !== 'feedback') {
-        const answer = answers[key]
-        totalScore += scoreMap[answer] || 0
+    for (const question of SURVEY_QUESTIONS) {
+      if (question.key === 'feedback') continue
+
+      const answer = answers[question.key]
+      if (answer) {
+        totalScore += scoreMap[answer] ?? 0
         count++
       }
     }
@@ -82,26 +94,47 @@ export function StudentSurveyView() {
     return count > 0 ? Math.round(totalScore / count) : 0
   }
 
-  const handleSubmit = async () => {
+  function buildRiskLevel(score: number): 'normal' | 'needs_attention' | 'at_risk' {
+    if (score >= 70) return 'normal'
+    if (score >= 50) return 'needs_attention'
+    return 'at_risk'
+  }
+
+  async function handleSubmit() {
     setLoading(true)
     setError(null)
 
     try {
       const score = calculateScore()
 
+      const structuredAnswers = SURVEY_QUESTIONS.map((question) => {
+        const answerValue = answers[question.key] ?? ''
+        return {
+          question_code: question.key,
+          question_text: question.label,
+          answer_value: answerValue || null,
+          answer_numeric:
+            question.key !== 'feedback' && answerValue ? (scoreMap[answerValue] ?? null) : null,
+          category: question.category,
+        }
+      })
+
       const response = await fetch('/api/wellness/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          score,
-          feedback: answers.feedback || '',
-          category: 'Student Wellness',
-          raw_responses: answers,
+          assessment_type: 'initial',
+          overall_score: score,
+          risk_level: buildRiskLevel(score),
+          journal_text: answers.feedback || '',
+          answers: structuredAnswers,
         }),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        throw new Error('Failed to submit survey')
+        throw new Error(result?.error || 'Failed to submit survey')
       }
 
       setStep(SURVEY_QUESTIONS.length)
@@ -117,7 +150,9 @@ export function StudentSurveyView() {
       <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center p-4">
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8 max-w-md w-full text-center">
           <h2 className="text-2xl font-bold text-slate-900 mb-4">Thank You!</h2>
-          <p className="text-slate-600 mb-6">Your wellness survey has been submitted successfully.</p>
+          <p className="text-slate-600 mb-6">
+            Your wellness survey has been submitted successfully.
+          </p>
           <button
             onClick={() => router.push('/dashboard/student')}
             className="w-full bg-[#800000] text-white py-2 rounded font-semibold hover:bg-[#600000]"
@@ -145,7 +180,7 @@ export function StudentSurveyView() {
             <div
               className="bg-[#800000] h-2 rounded-full transition-all duration-300"
               style={{ width: `${((step + 1) / SURVEY_QUESTIONS.length) * 100}%` }}
-            ></div>
+            />
           </div>
         </div>
 
@@ -157,9 +192,7 @@ export function StudentSurveyView() {
           {currentQuestion.type === 'textarea' ? (
             <textarea
               value={answers[currentQuestion.key] || ''}
-              onChange={(e) =>
-                setAnswers({ ...answers, [currentQuestion.key]: e.target.value })
-              }
+              onChange={(e) => setAnswers({ ...answers, [currentQuestion.key]: e.target.value })}
               placeholder="Enter your feedback here (optional)"
               className="w-full p-3 border border-slate-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-[#800000]"
               rows={4}
@@ -203,11 +236,11 @@ export function StudentSurveyView() {
           ) : (
             <button
               onClick={() => {
-                if (currentQuestion.type !== 'textarea' || answers[currentQuestion.key]) {
+                if (currentQuestion.type === 'textarea' || answers[currentQuestion.key]) {
                   setStep(step + 1)
                 }
               }}
-              disabled={!currentQuestion.type && !answers[currentQuestion.key]}
+              disabled={currentQuestion.type !== 'textarea' && !answers[currentQuestion.key]}
               className="flex-1 py-2 px-4 bg-[#800000] text-white rounded font-semibold hover:bg-[#600000] disabled:opacity-50"
             >
               Next

@@ -19,45 +19,46 @@ export function RoleSelectionClient({
   const [error, setError] = useState<string | null>(null)
 
   async function handleRoleSelection(role: 'student' | 'teacher') {
-    setIsLoading(true)
-    setError(null)
+  setIsLoading(true)
+  setError(null)
 
-    try {
-      const supabase = createClient()
+  try {
+    const supabase = createClient()
 
-      // Update user profile with selected role
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', userId)
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId)
 
-      if (updateError) {
-        throw new Error(updateError.message)
-      }
+    if (updateError) throw new Error(updateError.message)
 
-      // If selecting teacher role, also create teacher record
-      if (role === 'teacher') {
-        const { error: teacherError } = await supabase.from('teachers').insert({
-          id: userId,
-          full_name: '',
-          email: userEmail,
+    if (role === 'teacher') {
+      const { error: teacherError } = await supabase
+        .from('teachers')
+        .upsert({
+          user_id: userId,
         })
 
-        if (teacherError && !teacherError.message.includes('duplicate')) {
-          console.warn('Warning: Could not create teacher record:', teacherError)
-          // Don't fail, just continue
-        }
-      }
-
-      // Redirect to dashboard
-      router.push('/dashboard')
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to select role. Please try again.'
-      )
-      setIsLoading(false)
+      if (teacherError) throw new Error(teacherError.message)
     }
+
+    if (role === 'student') {
+      const { error: studentError } = await supabase
+        .from('students')
+        .upsert({
+          user_id: userId,
+          is_onboarded: false,
+        })
+
+      if (studentError) throw new Error(studentError.message)
+    }
+
+    router.push('/dashboard')
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to select role.')
+    setIsLoading(false)
   }
+}
 
   return (
     <div className="w-full max-w-2xl">

@@ -1,29 +1,73 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { signup } from '@/app/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+type ProgramOption = {
+  id: string
+  code: string
+  name: string
+}
+
 export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [role, setRole] = useState<'student' | 'teacher'>('student')
+  const role: 'student' = 'student'
   const [isPending, startTransition] = useTransition()
+  const [programs, setPrograms] = useState<ProgramOption[]>([])
+  const [programsLoading, setProgramsLoading] = useState(true)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     const formData = new FormData(e.currentTarget)
-    formData.set('role', role)
+
+    formData.set('role', 'student')
+
     startTransition(async () => {
       const result = await signup(formData)
       if (result?.error) setError(result.error)
       else setSuccess(true)
     })
   }
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadPrograms() {
+      try {
+        const response = await fetch('/api/programs')
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result?.error || 'Failed to load programs')
+        }
+
+        if (isMounted) {
+          setPrograms(result.programs || [])
+        }
+      } catch (error) {
+        console.error('Failed to load programs:', error)
+        if (isMounted) {
+          setPrograms([])
+        }
+      } finally {
+        if (isMounted) {
+          setProgramsLoading(false)
+        }
+      }
+    }
+
+    loadPrograms()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   if (success) {
     return (
@@ -64,29 +108,8 @@ export default function SignUpPage() {
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           {/* Role toggle */}
-          <div className="flex rounded-lg bg-muted p-1 mb-5">
-            <button
-              type="button"
-              onClick={() => setRole('student')}
-              className={`flex-1 text-sm py-1.5 rounded-md font-medium transition-all ${
-                role === 'student'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('teacher')}
-              className={`flex-1 text-sm py-1.5 rounded-md font-medium transition-all ${
-                role === 'teacher'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Teacher
-            </button>
+          <div className="rounded-lg bg-muted p-3 mb-5 text-sm text-muted-foreground">
+            Student registration only. Teacher and admin accounts are created by the system administrator.
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -104,16 +127,60 @@ export default function SignUpPage() {
               <>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="student_id" className="text-xs sm:text-sm font-medium text-card-foreground">Student ID</Label>
-                  <Input id="student_id" name="student_id" type="text" placeholder="2021-12345" className="bg-background border-border text-sm" />
+                  <Input
+                    id="student_number"
+                    name="student_number"
+                    type="text"
+                    placeholder="2021-12345"
+                    className="bg-background border-border text-sm"
+                  />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="course" className="text-xs sm:text-sm font-medium text-card-foreground">Course</Label>
-                    <Input id="course" name="course" type="text" placeholder="BSIT" className="bg-background border-border text-sm" />
+                    <Label htmlFor="program_id" className="text-xs sm:text-sm font-medium text-card-foreground">
+                      Program
+                    </Label>
+
+                    <select
+                      id="program_id"
+                      name="program_id"
+                      required
+                      disabled={programsLoading}
+                      defaultValue=""
+                      className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                    >
+                      <option value="" disabled>
+                        {programsLoading ? 'Loading programs...' : 'Select your program'}
+                      </option>
+
+                      {programs.map((program) => (
+                        <option key={program.id} value={program.id}>
+                          {program.code} - {program.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {!programsLoading && programs.length === 0 && (
+                      <p className="text-xs text-red-600">
+                        No programs available. Please contact the administrator.
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="year_level" className="text-xs sm:text-sm font-medium text-card-foreground">Year</Label>
                     <Input id="year_level" name="year_level" type="number" min={1} max={6} placeholder="3" className="bg-background border-border text-sm" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="section" className="text-xs sm:text-sm font-medium text-card-foreground">
+                      Section
+                    </Label>
+                    <Input
+                      id="section"
+                      name="section"
+                      type="text"
+                      placeholder="A"
+                      className="bg-background border-border text-sm"
+                    />
                   </div>
                 </div>
               </>

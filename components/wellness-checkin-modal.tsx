@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { createClient } from '@/lib/supabase/client'
 
 const MOOD_LABELS = ['Very Low', 'Low', 'Neutral', 'Good', 'Excellent']
 const STRESS_LABELS = ['Minimal', 'Low', 'Moderate', 'High', 'Very High']
@@ -92,41 +91,90 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
     setError(null)
   }
 
+  function getRiskLevel(stressValue: number): 'normal' | 'needs_attention' | 'at_risk' {
+    if (stressValue <= 2) return 'normal'
+    if (stressValue === 3) return 'needs_attention'
+    return 'at_risk'
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     if (mood === 0 || stress === 0) {
       setError('Please rate both your mood and stress level.')
       return
     }
+
     setError(null)
+
     startTransition(async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const response = await fetch('/api/wellness/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assessment_type: 'checkin',
+            mood: MOOD_LABELS[mood - 1],
+            stress_level: stress,
+            sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
+            journal_text: notes || '',
+            risk_level: getRiskLevel(stress),
+            answers: [
+              {
+                question_code: 'daily_mood',
+                question_text: 'How is your mood today?',
+                answer_value: MOOD_LABELS[mood - 1],
+                answer_numeric: mood,
+                category: 'Daily Check-In',
+              },
+              {
+                question_code: 'daily_stress',
+                question_text: 'How is your stress level today?',
+                answer_value: STRESS_LABELS[stress - 1],
+                answer_numeric: stress,
+                category: 'Daily Check-In',
+              },
+              {
+                question_code: 'sleep_hours',
+                question_text: 'How many hours did you sleep?',
+                answer_value: sleepHours || null,
+                answer_numeric: sleepHours ? parseFloat(sleepHours) : null,
+                category: 'Daily Check-In',
+              },
+              {
+                question_code: 'daily_notes',
+                question_text: 'Anything on your mind today?',
+                answer_value: notes || null,
+                answer_numeric: null,
+                category: 'Daily Check-In',
+              },
+            ],
+          }),
+        })
 
-      const { error: insertError } = await supabase.from('wellness_logs').insert({
-        user_id: user.id,
-        mood,
-        stress,
-        sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
-        notes: notes || null,
-      })
+        const result = await response.json()
 
-      if (insertError) {
-        setError(insertError.message)
-        return
+        if (!response.ok) {
+          throw new Error(result?.error || 'Failed to save check-in')
+        }
+
+        reset()
+        onOpenChange(false)
+        router.refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save check-in')
       }
-
-      reset()
-      onOpenChange(false)
-      router.refresh()
     })
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset()
+        onOpenChange(o)
+      }}
+    >
       <DialogContent className="max-w-md bg-card">
         <DialogHeader>
           <DialogTitle className="text-foreground">Daily Check-In</DialogTitle>
@@ -143,6 +191,7 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
             labels={MOOD_LABELS}
             colors={MOOD_COLORS}
           />
+
           <ScaleSelector
             label="Stress Level"
             value={stress}
@@ -183,14 +232,19 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
           </div>
 
           {error && (
-            <p className="text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-md">{error}</p>
+            <p className="text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-md">
+              {error}
+            </p>
           )}
 
           <div className="flex gap-3 justify-end">
             <Button
               type="button"
               variant="outline"
-              onClick={() => { reset(); onOpenChange(false) }}
+              onClick={() => {
+                reset()
+                onOpenChange(false)
+              }}
             >
               Cancel
             </Button>

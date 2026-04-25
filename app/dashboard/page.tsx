@@ -1,51 +1,43 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { WellnessDashboardClient } from '@/components/wellness-dashboard-client'
-
-export const metadata = {
-  title: 'Student Dashboard - Sentire',
-  description: 'Student wellness and academic monitoring dashboard',
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     redirect('/auth/login')
   }
 
-  // Prioritize user metadata role for routing (this is set at signup)
-  const userRole = user.user_metadata?.role || 'student'
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
 
-  // Route based on role FIRST
-  if (userRole === 'teacher') {
-    redirect('/dashboard/overview')
+  if (!profile) {
+    redirect('/auth/select-role')
   }
 
-  if (userRole === 'admin') {
+  if (profile.role === 'student') {
+    const { data: student } = await supabase
+      .from('students')
+      .select('is_onboarded')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    redirect(student?.is_onboarded ? '/dashboard/student' : '/dashboard/student/onboarding')
+  }
+
+  if (profile.role === 'teacher') {
+    redirect('/dashboard/teacher')
+  }
+
+  if (profile.role === 'admin') {
     redirect('/dashboard/admin')
   }
 
-  // For students, fetch additional profile data (but don't block on it)
-  let profile = null
-  try {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle()
-    profile = data
-  } catch (error) {
-    console.error('[v0] Profile fetch error:', error)
-    // Continue anyway - profile is optional
-  }
-
-  return (
-    <WellnessDashboardClient
-      profile={profile}
-      email={user.email!}
-      logs={[]}
-    />
-  )
+  redirect('/auth/login')
 }

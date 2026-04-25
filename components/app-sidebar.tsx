@@ -25,17 +25,18 @@ interface AppSidebarProps {
 }
 
 const studentNav = [
-  { href: '/dashboard/wellness', label: 'Wellness', icon: HeartPulse },
+  { href: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/student/check-in', label: 'Wellness', icon: HeartPulse },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCog },
 ]
 
 const teacherNav = [
-  { href: '/dashboard/overview', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/students', label: 'Students', icon: GraduationCap },
+  { href: '/dashboard/teacher', label: 'Overview', icon: LayoutDashboard },
 ]
 
 const adminNav = [
   { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/faculty', label: 'Faculty', icon: GraduationCap },
 ]
 
 export function AppSidebar({ profile, email }: AppSidebarProps) {
@@ -75,7 +76,9 @@ export function AppSidebar({ profile, email }: AppSidebarProps) {
         {nav.map(({ href, label, icon: Icon }) => {
           // THE FIX: Strict equality check for the active state.
           // This prevents the "Overview" button from fighting the "Students" button.
-          const isActive = pathname === href || (href === '/dashboard/wellness' && pathname === '/dashboard')
+          const isActive =
+            pathname === href ||
+            (href === '/dashboard/student' && pathname === '/dashboard')
 
           return (
             <a

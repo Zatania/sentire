@@ -18,22 +18,11 @@ export default function LoginPage() {
     startTransition(async () => {
       try {
         const result = await login(formData)
-
-        // If the server returns an error object
         if (result?.error) {
           setError(result.error)
-          return
         }
-
-        // If the action didn't trigger a redirect automatically 
-        // (sometimes happens in vusercontent/preview environments),
-        // we force it here.
-        window.location.href = '/dashboard/students'
-
       } catch (err) {
-        // This catches the 'NEXT_REDIRECT' error which is actually a success
-        // but can sometimes trigger the 'Application Error' overlay
-        console.log("Redirecting...")
+        console.log('Redirecting...')
       }
     })
   }

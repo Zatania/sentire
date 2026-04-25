@@ -1,38 +1,25 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view'
 
 export default async function TeacherDashboard() {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-        },
-      },
-    }
-  )
+  const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return <div>Not authenticated</div>
-  }
+  if (!user) redirect('/auth/login')
 
-  // Get teacher profile
   const { data: profile } = await supabase
-    .from('profiles_teachers')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+    redirect('/dashboard')
+  }
 
   return <TeacherDashboardView profile={profile} email={user.email || ''} />
 }

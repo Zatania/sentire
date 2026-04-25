@@ -14,39 +14,47 @@ export async function updateProfile(formData: FormData) {
     return { error: 'Not authenticated' }
   }
 
-  const fullName = formData.get('full_name') as string
-  const course = formData.get('course') as string
-  const studentId = formData.get('student_id') as string
-  const yearLevel = formData.get('year_level') as string
+  const fullName = String(formData.get('full_name') ?? '').trim()
+  const studentNumber = String(formData.get('student_number') ?? '').trim()
+  const section = String(formData.get('section') ?? '').trim()
+  const yearLevelRaw = String(formData.get('year_level') ?? '').trim()
+  const yearLevel = yearLevelRaw ? Number(yearLevelRaw) : null
 
-  const { error } = await supabase
+  const { error: profileError } = await supabase
     .from('profiles')
     .update({
       full_name: fullName,
-      course,
-      student_id: studentId,
-      year_level: yearLevel ? parseInt(yearLevel) : null,
     })
     .eq('id', user.id)
 
-  if (error) {
-    return { error: error.message }
+  if (profileError) {
+    return { error: profileError.message }
   }
 
-  // Also update user metadata
-  await supabase.auth.updateUser({
-    data: {
-      full_name: fullName,
-      course,
-      student_id: studentId,
-      year_level: yearLevel,
-    },
-  })
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.role === 'student') {
+    const { error: studentError } = await supabase
+      .from('students')
+      .update({
+        student_number: studentNumber || null,
+        section: section || null,
+        year_level: Number.isFinite(yearLevel) ? yearLevel : null,
+      })
+      .eq('user_id', user.id)
+
+    if (studentError) {
+      return { error: studentError.message }
+    }
+  }
 
   revalidatePath('/dashboard/profile')
   return { success: true }
 }
-
 export async function changePassword(formData: FormData) {
   const supabase = await createClient()
 

@@ -33,11 +33,11 @@ export default async function SelectRolePage() {
 
   // If role is already set, redirect to appropriate dashboard
   if (profile?.role === 'student') {
-    redirect('/dashboard') // Students go to wellness dashboard
+    redirect('/dashboard/student')
   } else if (profile?.role === 'teacher') {
-    redirect('/dashboard/overview') // Teachers to their overview
+    redirect('/dashboard/teacher')
   } else if (profile?.role === 'admin') {
-    redirect('/dashboard/admin') // Admins to admin dashboard
+    redirect('/dashboard/admin')
   }
 
   return (

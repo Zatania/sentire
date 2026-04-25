@@ -16,8 +16,13 @@ export default async function AdminPage() {
   }
 
   // Check role from user metadata FIRST
-  const userRole = user.user_metadata?.role
-  if (userRole !== 'admin') {
+  const { data: roleProfile } = await supabase
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (roleProfile?.role !== 'admin') {
     redirect('/dashboard')
   }
 

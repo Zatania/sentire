@@ -14,10 +14,8 @@ interface Teacher {
   employee_id?: string
   department?: string
   designation?: string
-  phone_number?: string
-  office_location?: string
-  bio?: string
   created_at: string
+  status?: string
 }
 
 export function FacultyManagementClient({
@@ -34,38 +32,55 @@ export function FacultyManagementClient({
     employee_id: '',
     department: '',
     designation: '',
-    phone_number: '',
-    office_location: '',
-    bio: '',
   })
 
   const supabase = createClient()
 
   async function handleSave(teacherId?: string) {
+    if (!teacherId) {
+      alert('Teacher/admin accounts should be created from Auth + profiles first.')
+      return
+    }
+
     if (!formData.full_name || !formData.email) {
       alert('Please fill in name and email')
       return
     }
 
     try {
-      if (teacherId) {
-        // Update existing
-        const { error } = await supabase
-          .from('teachers')
-          .update(formData)
-          .eq('id', teacherId)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          email: formData.email,
+        })
+        .eq('id', teacherId)
 
-        if (error) throw error
+      if (profileError) throw profileError
 
-        setTeachers(
-          teachers.map((t) =>
-            t.id === teacherId ? { ...t, ...formData } : t
-          )
+      const { error: teacherError } = await supabase
+        .from('teachers')
+        .update({
+          employee_number: formData.employee_id || null,
+          designation: formData.designation || null,
+        })
+        .eq('user_id', teacherId)
+
+      if (teacherError) throw teacherError
+
+      setTeachers(
+        teachers.map((t) =>
+          t.id === teacherId
+            ? {
+                ...t,
+                full_name: formData.full_name,
+                email: formData.email,
+                employee_id: formData.employee_id,
+                designation: formData.designation,
+              }
+            : t
         )
-      } else {
-        // Create new - would need auth setup
-        alert('To create a new faculty account, they must first sign up and select Faculty role')
-      }
+      )
 
       setFormData({
         full_name: '',
@@ -73,9 +88,6 @@ export function FacultyManagementClient({
         employee_id: '',
         department: '',
         designation: '',
-        phone_number: '',
-        office_location: '',
-        bio: '',
       })
       setEditingId(null)
       setIsAddingNew(false)
@@ -85,14 +97,26 @@ export function FacultyManagementClient({
   }
 
   async function handleDelete(teacherId: string) {
-    if (!confirm('Are you sure you want to delete this faculty record?')) return
+    if (!confirm('Are you sure you want to remove this faculty role?')) return
 
     try {
-      const { error } = await supabase.from('teachers').delete().eq('id', teacherId)
-      if (error) throw error
+      const { error: teacherError } = await supabase
+        .from('teachers')
+        .delete()
+        .eq('user_id', teacherId)
+
+      if (teacherError) throw teacherError
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: 'student' })
+        .eq('id', teacherId)
+
+      if (profileError) throw profileError
+
       setTeachers(teachers.filter((t) => t.id !== teacherId))
     } catch (err) {
-      alert('Error deleting teacher: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      alert('Error deleting teacher role: ' + (err instanceof Error ? err.message : 'Unknown error'))
     }
   }
 
@@ -103,48 +127,39 @@ export function FacultyManagementClient({
       employee_id: teacher.employee_id || '',
       department: teacher.department || '',
       designation: teacher.designation || '',
-      phone_number: teacher.phone_number || '',
-      office_location: teacher.office_location || '',
-      bio: teacher.bio || '',
     })
     setEditingId(teacher.id)
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-6 lg:gap-8">
-      {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Faculty Management</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+          Faculty Management
+        </h1>
         <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Manage faculty accounts and profiles in the system.
         </p>
       </div>
 
-      {/* Info Box */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-900">
-          <strong>Note:</strong> Faculty members sign up through the system and select the Faculty role. You can edit their profiles here.
+          <strong>Note:</strong> Faculty members should exist in Auth, <code>profiles</code>, and <code>teachers</code>. This page edits existing faculty records.
         </p>
       </div>
 
-      {/* Add New Form */}
       {isAddingNew && (
         <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Add New Faculty</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Note: Faculty members must sign up in the system first. This form is for updating their profile information.
+            Create the Auth user first, then add matching rows in <code>profiles</code> and <code>teachers</code>.
           </p>
-          <Button
-            onClick={() => setIsAddingNew(false)}
-            variant="outline"
-            className="mt-4"
-          >
+          <Button onClick={() => setIsAddingNew(false)} variant="outline" className="mt-4">
             Close
           </Button>
         </div>
       )}
 
-      {/* Faculty Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex items-center justify-between">
           <h2 className="text-xs sm:text-sm font-semibold text-foreground">
@@ -162,7 +177,7 @@ export function FacultyManagementClient({
 
         {teachers.length === 0 ? (
           <div className="px-4 sm:px-6 py-8 sm:py-12 text-center text-muted-foreground text-xs sm:text-sm">
-            No faculty members yet. Faculty can sign up through the system.
+            No faculty members found.
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -200,7 +215,7 @@ export function FacultyManagementClient({
                         <label className="text-xs font-medium text-muted-foreground">Department</label>
                         <Input
                           value={formData.department}
-                          onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                          disabled
                           className="mt-1 text-sm"
                         />
                       </div>
@@ -212,21 +227,9 @@ export function FacultyManagementClient({
                           className="mt-1 text-sm"
                         />
                       </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                        <Input
-                          value={formData.phone_number}
-                          onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                          className="mt-1 text-sm"
-                        />
-                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleSave(teacher.id)}
-                        className="text-xs sm:text-sm h-8"
-                      >
+                      <Button size="sm" onClick={() => handleSave(teacher.id)} className="text-xs sm:text-sm h-8">
                         Save
                       </Button>
                       <Button
@@ -258,28 +261,23 @@ export function FacultyManagementClient({
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        onClick={() => startEdit(teacher)}
-                        className="h-8 text-xs"
+                        onClick={() => window.location.href = `mailto:${teacher.email}`}
+                        title="Email"
                       >
-                        <Edit2 size={14} />
+                        <Mail size={16} />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(teacher)} title="Edit">
+                        <Edit2 size={16} />
                       </Button>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        onClick={() => (window.location.href = `mailto:${teacher.email}`)}
-                        className="h-8 text-xs"
-                      >
-                        <Mail size={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
                         onClick={() => handleDelete(teacher.id)}
-                        className="h-8 text-xs"
+                        title="Remove faculty role"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} className="text-red-600" />
                       </Button>
                     </div>
                   </div>

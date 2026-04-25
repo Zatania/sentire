@@ -10,50 +10,62 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createClient()
 
-  // 1. Check for valid session
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/auth/login')
   }
 
-  // 2. Fetch profile safely
-  // FIX: Using maybeSingle() prevents crashes if the user profile doesn't exist yet
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, role, course, year_level')
+    .select('full_name, role')
     .eq('id', user.id)
     .maybeSingle()
 
-  // 3. Fallback to metadata if profile role is missing
-  const userRole = profile?.role || user.user_metadata?.role
-
-  // 4. FIX: Force role selection if entirely missing
-  if (!userRole) {
+  if (!profile?.role) {
     redirect('/auth/select-role')
   }
 
-  // 5. Build a safe profile object for our UI components
+  let course: string | null = null
+  let yearLevel: number | null = null
+
+  if (profile.role === 'student') {
+    const { data: student } = await supabase
+      .from('students')
+      .select('year_level, program_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    yearLevel = student?.year_level ?? null
+
+    if (student?.program_id) {
+      const { data: program } = await supabase
+        .from('programs')
+        .select('code')
+        .eq('id', student.program_id)
+        .maybeSingle()
+
+      course = program?.code ?? null
+    }
+  }
+
   const safeProfile = {
-    full_name: profile?.full_name ?? null,
-    role: userRole,
-    course: profile?.course ?? null,
-    year_level: profile?.year_level ?? null,
+    full_name: profile.full_name ?? null,
+    role: profile.role,
+    course,
+    year_level: yearLevel,
   }
 
   return (
     <div className="flex h-screen overflow-hidden font-sans bg-slate-50">
-      {/* Sidebar - Desktop Only */}
       <div className="hidden lg:block h-full">
         <AppSidebar profile={safeProfile} email={user.email ?? ''} />
       </div>
 
-      {/* Main Container */}
       <div className="flex flex-col flex-1 w-full h-full overflow-hidden">
-        {/* Mobile Header */}
         <MobileHeader profile={safeProfile} email={user.email ?? ''} />
-
-        {/* Page Content */}
         <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 relative outline-none">
           {children}
         </main>

@@ -20,17 +20,19 @@ interface MobileHeaderProps {
 }
 
 const studentNav = [
-  { href: '/dashboard', label: 'Wellness', icon: HeartPulse },
+  { href: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/student/check-in', label: 'Wellness', icon: HeartPulse },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCog },
 ]
 
 const teacherNav = [
-  { href: '/dashboard/overview', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard/teacher', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/students', label: 'Students', icon: GraduationCap },
 ]
 
 const adminNav = [
   { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/faculty', label: 'Faculty', icon: GraduationCap },
 ]
 
 export function MobileHeader({ profile, email }: MobileHeaderProps) {
@@ -103,7 +105,9 @@ export function MobileHeader({ profile, email }: MobileHeaderProps) {
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
             {nav.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href || pathname.startsWith(href + '/')
+              const isActive =
+                pathname === href ||
+                (href === '/dashboard/student' && pathname === '/dashboard')
               return (
                 <Link
                   key={href}
