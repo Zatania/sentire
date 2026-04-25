@@ -13,8 +13,22 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
-const MOOD_LABELS = ['Very Low', 'Low', 'Neutral', 'Good', 'Excellent']
-const STRESS_LABELS = ['Minimal', 'Low', 'Moderate', 'High', 'Very High']
+const MOOD_LABELS = [
+  '1 - Very Low',
+  '2 - Low',
+  '3 - Neutral',
+  '4 - Good',
+  '5 - Excellent',
+]
+
+const STRESS_LABELS = [
+  '1 - Minimal',
+  '2 - Low',
+  '3 - Moderate',
+  '4 - High',
+  '5 - Very High',
+]
+
 const MOOD_COLORS = [
   'bg-destructive',
   'bg-orange-400',
@@ -29,6 +43,21 @@ const STRESS_COLORS = [
   'bg-orange-400',
   'bg-destructive',
 ]
+const MOOD_GUIDE = [
+  'Very low mood: feeling emotionally down, unmotivated, or having a very difficult day.',
+  'Low mood: feeling slightly down, tired, or not emotionally at your best.',
+  'Neutral mood: feeling okay or average, without strong positive or negative emotions.',
+  'Good mood: feeling generally positive, calm, or emotionally well.',
+  'Excellent mood: feeling very positive, energized, and emotionally strong.',
+]
+
+const STRESS_GUIDE = [
+  'Minimal stress: feeling calm, relaxed, and not pressured.',
+  'Low stress: a little pressure is present, but still manageable.',
+  'Moderate stress: noticeable pressure that may already affect focus or comfort.',
+  'High stress: strong pressure that may affect performance, mood, or daily functioning.',
+  'Very high stress: overwhelming pressure that may need support or intervention.',
+]
 
 function ScaleSelector({
   label,
@@ -36,12 +65,14 @@ function ScaleSelector({
   onChange,
   labels,
   colors,
+  descriptions,
 }: {
   label: string
   value: number
   onChange: (v: number) => void
   labels: string[]
   colors: string[]
+  descriptions: string[]
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -62,9 +93,16 @@ function ScaleSelector({
           </button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">
-        {value > 0 ? labels[value - 1] : 'Select a value'}
-      </p>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          {value > 0 ? labels[value - 1] : 'Select a value'}
+        </p>
+        {value > 0 && (
+          <p className="text-xs text-slate-600">
+            {descriptions[value - 1]}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -97,6 +135,39 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
     return 'at_risk'
   }
 
+  function calculateOverallScore(
+    moodValue: number,
+    stressValue: number,
+    sleepValue: string
+  ): number {
+    const sleep = sleepValue ? parseFloat(sleepValue) : 0
+
+    // Convert mood (1-5) to positive score
+    const moodScore = moodValue * 20
+
+    // Convert stress so lower stress = higher score
+    const stressScore = (6 - stressValue) * 20
+
+    // Convert sleep hours to score
+    let sleepScore = 0
+    if (sleep >= 8) sleepScore = 100
+    else if (sleep >= 7) sleepScore = 85
+    else if (sleep >= 6) sleepScore = 70
+    else if (sleep >= 5) sleepScore = 50
+    else if (sleep > 0) sleepScore = 30
+
+    // Weighted average
+    const weighted =
+      moodScore * 0.4 +
+      stressScore * 0.4 +
+      sleepScore * 0.2
+
+    return Math.round(weighted)
+  }
+
+  
+  const overallScore = calculateOverallScore(mood, stress, sleepHours)
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
@@ -112,8 +183,10 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
         const response = await fetch('/api/wellness/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+
           body: JSON.stringify({
             assessment_type: 'checkin',
+            overall_score: overallScore,
             mood: MOOD_LABELS[mood - 1],
             stress_level: stress,
             sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
@@ -190,6 +263,7 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
             onChange={setMood}
             labels={MOOD_LABELS}
             colors={MOOD_COLORS}
+            descriptions={MOOD_GUIDE}
           />
 
           <ScaleSelector
@@ -198,6 +272,7 @@ export function WellnessCheckInModal({ open, onOpenChange }: WellnessCheckInModa
             onChange={setStress}
             labels={STRESS_LABELS}
             colors={STRESS_COLORS}
+            descriptions={STRESS_GUIDE}
           />
 
           <div className="flex flex-col gap-1.5">

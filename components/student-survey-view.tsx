@@ -100,6 +100,42 @@ export function StudentSurveyView() {
     return 'at_risk'
   }
 
+  function deriveMoodFromScore(score: number): string {
+    if (score >= 85) return 'Excellent'
+    if (score >= 70) return 'Good'
+    if (score >= 55) return 'Neutral'
+    if (score >= 40) return 'Low'
+    return 'Very Low'
+  }
+
+  function deriveStressFromAcademicAnswer(answer?: string): number | null {
+    if (!answer) return null
+
+    const map: Record<string, number> = {
+      'Very Low': 1,
+      Low: 2,
+      Moderate: 3,
+      High: 4,
+      'Very High': 5,
+    }
+
+    return map[answer] ?? null
+  }
+
+  function deriveSleepHoursFromAnswer(answer?: string): number | null {
+    if (!answer) return null
+
+    const map: Record<string, number> = {
+      'Very Poor': 4.5,
+      Poor: 5.5,
+      Fair: 6.5,
+      Good: 7.5,
+      Excellent: 8.5,
+    }
+
+    return map[answer] ?? null
+  }
+
   async function handleSubmit() {
     setLoading(true)
     setError(null)
@@ -119,6 +155,10 @@ export function StudentSurveyView() {
         }
       })
 
+      const derivedMood = deriveMoodFromScore(score)
+      const derivedStress = deriveStressFromAcademicAnswer(answers.academic_stress)
+      const derivedSleep = deriveSleepHoursFromAnswer(answers.sleep_quality)
+
       const response = await fetch('/api/wellness/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,6 +166,9 @@ export function StudentSurveyView() {
           assessment_type: 'initial',
           overall_score: score,
           risk_level: buildRiskLevel(score),
+          mood: derivedMood,
+          stress_level: derivedStress,
+          sleep_hours: derivedSleep,
           journal_text: answers.feedback || '',
           answers: structuredAnswers,
         }),

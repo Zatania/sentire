@@ -26,7 +26,6 @@ interface AppSidebarProps {
 
 const studentNav = [
   { href: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/student/check-in', label: 'Wellness', icon: HeartPulse },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCog },
 ]
 

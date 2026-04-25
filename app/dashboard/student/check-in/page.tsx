@@ -1,5 +1,5 @@
-import WellnessPage from '@/app/dashboard/wellness/page'
+import { redirect } from 'next/navigation'
 
-export default function StudentCheckinPage() {
-  return <WellnessPage />
+export default function StudentCheckInPage() {
+  redirect('/dashboard/student')
 }

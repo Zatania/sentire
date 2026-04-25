@@ -21,13 +21,11 @@ interface MobileHeaderProps {
 
 const studentNav = [
   { href: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/student/check-in', label: 'Wellness', icon: HeartPulse },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCog },
 ]
 
 const teacherNav = [
   { href: '/dashboard/teacher', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/students', label: 'Students', icon: GraduationCap },
 ]
 
 const adminNav = [
