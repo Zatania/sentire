@@ -132,6 +132,7 @@ export default function SignUpPage() {
                     name="student_number"
                     type="text"
                     placeholder="2021-12345"
+                    required
                     className="bg-background border-border text-sm"
                   />
                 </div>
@@ -168,7 +169,16 @@ export default function SignUpPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="year_level" className="text-xs sm:text-sm font-medium text-card-foreground">Year</Label>
-                    <Input id="year_level" name="year_level" type="number" min={1} max={6} placeholder="3" className="bg-background border-border text-sm" />
+                    <Input
+                      id="year_level"
+                      name="year_level"
+                      type="number"
+                      min={1}
+                      max={10}
+                      placeholder="3"
+                      required
+                      className="bg-background border-border text-sm"
+                    />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="section" className="text-xs sm:text-sm font-medium text-card-foreground">
@@ -179,6 +189,7 @@ export default function SignUpPage() {
                       name="section"
                       type="text"
                       placeholder="A"
+                      required
                       className="bg-background border-border text-sm"
                     />
                   </div>

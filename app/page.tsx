@@ -55,8 +55,8 @@ export default function LandingPage() {
               Complete the wellness survey and track your emotional wellbeing and academic performance
             </CardContent>
             <CardFooter className="justify-center pt-4">
-              <Link href="/survey" className="text-[#2563EB] font-bold hover:underline flex items-center gap-1">
-                Get Started →
+              <Link href="/auth/sign-up" className="text-[#2563EB] font-bold hover:underline flex items-center gap-1">
+                Sign Up →
               </Link>
             </CardFooter>
           </Card>
