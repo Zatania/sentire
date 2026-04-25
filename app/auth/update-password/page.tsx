@@ -44,7 +44,7 @@ export default function UpdatePasswordPage() {
 
     setSuccess(true)
     setTimeout(() => {
-      router.push('/dashboard')
+      router.push('/auth/login')
     }, 2000)
   }
 
@@ -91,7 +91,7 @@ export default function UpdatePasswordPage() {
                   </svg>
                 </div>
                 <h2 className="text-lg font-semibold text-foreground mb-1">Password Updated!</h2>
-                <p className="text-sm text-muted-foreground">Redirecting to dashboard...</p>
+                <p className="text-sm text-muted-foreground">Redirecting to sign in...</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">

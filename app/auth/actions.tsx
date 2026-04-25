@@ -170,3 +170,23 @@ export async function logout() {
   revalidatePath('/', 'layout')
   redirect('/auth/login')
 }
+
+export async function resetPassword(formData: FormData) {
+  const supabase = await createClient()
+
+  const email = normalizeEmail(formData.get('email'))
+
+  if (!email) {
+    return { error: 'Email is required.' }
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=recovery`,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}

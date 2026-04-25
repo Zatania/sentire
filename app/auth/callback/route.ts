@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient()
+
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
@@ -42,9 +43,11 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    return NextResponse.redirect(
-      `${origin}${student?.is_onboarded ? '/dashboard/student' : '/dashboard/student/onboarding'}`
-    )
+    if (!student?.is_onboarded) {
+      return NextResponse.redirect(`${origin}/dashboard/student/onboarding`)
+    }
+
+    return NextResponse.redirect(`${origin}/dashboard/student`)
   }
 
   if (profile?.role === 'teacher') {
@@ -55,5 +58,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/dashboard/admin`)
   }
 
-  return NextResponse.redirect(`${origin}/auth/login`)
+  return NextResponse.redirect(`${origin}/auth/login?error=Account+profile+is+missing`)
 }
