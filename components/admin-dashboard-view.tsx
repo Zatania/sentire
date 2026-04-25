@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { StudentInsightCard } from '@/components/student-insight-card'
 
 type AdminResponseRow = {
   student_id: string
@@ -21,6 +22,16 @@ type AdminResponseRow = {
   latest_sleep_hours: number | null
 }
 
+type StudentDetail = {
+  id: string
+  name: string
+  mood: number
+  stress: number
+  sleepHours?: number | null
+  notes?: string | null
+  gwa?: number | null
+}
+
 export function AdminDashboardView({
   profile,
   email,
@@ -33,6 +44,9 @@ export function AdminDashboardView({
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState('')
   const [sortBy, setSortBy] = React.useState('submitted_at')
+  const [expandedId, setExpandedId] = React.useState<string | null>(null)
+  const [studentDetails, setStudentDetails] = React.useState<Record<string, StudentDetail>>({})
+  const [loadingDetailId, setLoadingDetailId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +68,30 @@ export function AdminDashboardView({
     fetchData()
   }, [])
 
+  async function toggleStudent(row: AdminResponseRow) {
+    if (expandedId === row.student_id) {
+      setExpandedId(null)
+      return
+    }
+
+    setExpandedId(row.student_id)
+
+    if (studentDetails[row.student_id]) return
+
+    try {
+      setLoadingDetailId(row.student_id)
+      const res = await fetch(`/api/students/${row.student_id}/latest`)
+      const data = await res.json()
+      if (res.ok && data.student) {
+        setStudentDetails((prev) => ({ ...prev, [row.student_id]: data.student }))
+      }
+    } catch (error) {
+      console.error('Failed to load student detail:', error)
+    } finally {
+      setLoadingDetailId(null)
+    }
+  }
+
   const filteredResponses = responses
     .filter((r) => {
       const q = searchTerm.toLowerCase()
@@ -68,16 +106,11 @@ export function AdminDashboardView({
     })
     .sort((a, b) => {
       if (sortBy === 'submitted_at') {
-        return (
-          new Date(b.latest_submitted_at || 0).getTime() -
-          new Date(a.latest_submitted_at || 0).getTime()
-        )
+        return new Date(b.latest_submitted_at || 0).getTime() - new Date(a.latest_submitted_at || 0).getTime()
       }
-
       if (sortBy === 'stress') {
         return (b.latest_stress_level ?? 0) - (a.latest_stress_level ?? 0)
       }
-
       return 0
     })
 
@@ -101,7 +134,6 @@ export function AdminDashboardView({
 
   return (
     <div className="flex min-h-screen">
-
       <main className="flex-1 bg-[#FDFCFB] p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">
@@ -175,30 +207,47 @@ export function AdminDashboardView({
                   </thead>
                   <tbody>
                     {filteredResponses.map((response) => (
-                      <tr key={response.student_id} className="border-b border-slate-200 hover:bg-slate-50">
-                        <td className="p-3">
-                          <div className="font-semibold text-slate-900">{response.full_name}</div>
-                          <div className="text-xs text-slate-500">{response.email}</div>
-                        </td>
-                        <td className="p-3">{response.program_code || '—'}</td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-semibold ${badgeClasses(response.latest_risk_level)}`}
-                          >
-                            {badgeLabel(response.latest_risk_level)}
-                          </span>
-                        </td>
-                        <td className="p-3">{response.latest_mood || '—'}</td>
-                        <td className="p-3">{response.latest_stress_level ?? '—'}</td>
-                        <td className="p-3 text-slate-600 max-w-xs truncate">
-                          {response.latest_ai_summary || response.latest_ai_label || 'No summary'}
-                        </td>
-                        <td className="p-3 text-slate-500">
-                          {response.latest_submitted_at
-                            ? new Date(response.latest_submitted_at).toLocaleDateString()
-                            : '—'}
-                        </td>
-                      </tr>
+                      <React.Fragment key={response.student_id}>
+                        <tr
+                          className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer"
+                          onClick={() => toggleStudent(response)}
+                        >
+                          <td className="p-3">
+                            <div className="font-semibold text-slate-900">{response.full_name}</div>
+                            <div className="text-xs text-slate-500">{response.email}</div>
+                          </td>
+                          <td className="p-3">{response.program_code || '—'}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${badgeClasses(response.latest_risk_level)}`}>
+                              {badgeLabel(response.latest_risk_level)}
+                            </span>
+                          </td>
+                          <td className="p-3">{response.latest_mood || '—'}</td>
+                          <td className="p-3">{response.latest_stress_level ?? '—'}</td>
+                          <td className="p-3 text-slate-600 max-w-xs truncate">
+                            {response.latest_ai_summary || response.latest_ai_label || 'No summary'}
+                          </td>
+                          <td className="p-3 text-slate-500">
+                            {response.latest_submitted_at
+                              ? new Date(response.latest_submitted_at).toLocaleDateString()
+                              : '—'}
+                          </td>
+                        </tr>
+
+                        {expandedId === response.student_id && (
+                          <tr className="border-b border-slate-200 bg-slate-50">
+                            <td colSpan={7} className="p-4">
+                              {loadingDetailId === response.student_id ? (
+                                <p className="text-sm text-slate-500">Loading student analysis…</p>
+                              ) : studentDetails[response.student_id] ? (
+                                <StudentInsightCard student={studentDetails[response.student_id]} />
+                              ) : (
+                                <p className="text-sm text-slate-500">Unable to load student details.</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>

@@ -1,10 +1,5 @@
-import { createGroq } from '@ai-sdk/groq'
-import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
-
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+import { generateGeminiText } from '@/lib/ai/gemini'
 
 export async function POST(request: Request) {
   try {
@@ -30,33 +25,28 @@ export async function POST(request: Request) {
       )
       .join('; ')
 
-    const prompt = `You are Sentire, an empathetic AI wellness assistant for university students. Based on the student's current emotional state and recent wellness trends, provide a brief, supportive, and actionable response.
+    const text = await generateGeminiText({
+      model: 'gemini-2.5-flash',
+      temperature: 0.5,
+      systemInstruction:
+        'You are an empathetic AI wellness assistant for university students. Be warm, concise, supportive, and non-diagnostic.',
+      prompt: `Based on the student's current emotional state and recent wellness trends, provide:
+1. A brief empathetic acknowledgment
+2. One specific, actionable recommendation
+3. If stress is High or Very High, gently suggest support resources
 
 Current State:
 - Mood: ${moodLabels[mood] || 'Unknown'}
 - Stress Level: ${stressLabels[stress] || 'Unknown'}
 
-Recent Wellness Trend (last 5 check-ins): ${recentTrend || 'No previous data'}
+Recent Wellness Trend: ${recentTrend || 'No previous data'}
 
-Provide:
-1. A brief empathetic acknowledgment (1 sentence)
-2. One specific, actionable wellness recommendation based on their state
-3. If stress is High or Very High, gently suggest seeking support resources
-
-Keep the response warm, concise (max 100 words), and student-friendly. Do not use bullet points or numbered lists in your response - write in natural paragraphs.`
-
-    const { text } = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
-      prompt,
-      maxTokens: 200,
+Write naturally in short paragraphs only, max 100 words.`,
     })
 
     return Response.json({ insight: text })
   } catch (error) {
     console.error('Wellness insights error:', error)
-    return Response.json(
-      { error: 'Failed to generate wellness insights' },
-      { status: 500 }
-    )
+    return Response.json({ error: 'Failed to generate wellness insights' }, { status: 500 })
   }
 }

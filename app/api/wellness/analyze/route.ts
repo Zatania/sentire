@@ -27,21 +27,18 @@ export async function GET() {
 
     const admin = createAdminClient()
 
-    const { data: responses, error } = await admin
-      .from('wellness_assessments')
+    const { data: rows, error } = await admin
+      .from('v_student_summary')
       .select('*')
-      .order('submitted_at', { ascending: false })
-      .limit(50)
+      .order('full_name', { ascending: true })
 
-    if (error) {
-      throw error
-    }
+    if (error) throw error
 
-    const sentiment = await analyzeWellnessSentiment(responses ?? [])
+    const sentiment = await analyzeWellnessSentiment(rows ?? [])
 
     return NextResponse.json({
       sentiment,
-      responseCount: responses?.length ?? 0,
+      responseCount: rows?.length ?? 0,
       status: 'success',
     })
   } catch (error) {

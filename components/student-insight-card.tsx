@@ -112,7 +112,7 @@ export function StudentInsightCard({
               <h3 className="font-semibold text-foreground text-sm sm:text-base">
                 AI Student Analysis
               </h3>
-              <p className="text-xs text-muted-foreground">Powered by Groq AI</p>
+              <p className="text-xs text-muted-foreground">Powered by Gemini API</p>
             </div>
           </div>
           {onClose && (
@@ -178,7 +178,7 @@ export function StudentInsightCard({
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-primary" />
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Groq AI Analysis Results
+              Gemini AI Analysis Results
             </h4>
           </div>
 
@@ -199,7 +199,7 @@ export function StudentInsightCard({
             <div className="bg-muted/30 rounded-lg p-8 border border-border text-center">
               <Loader2 className="w-8 h-8 text-primary mx-auto mb-3 animate-spin" />
               <p className="text-sm text-muted-foreground">
-                Groq AI is analyzing student data...
+                Gemini is analyzing student data...
               </p>
             </div>
           )}
