@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+function getSiteUrl(requestUrl: string) {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    new URL(requestUrl).origin
+
+  return configuredUrl.replace(/\/$/, '')
+}
+
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const requestUrl = new URL(request.url)
+  const searchParams = requestUrl.searchParams
   const code = searchParams.get('code')
   const type = searchParams.get('type')
+  const siteUrl = getSiteUrl(request.url)
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/auth/login?error=Could+not+verify+email`)
+    return NextResponse.redirect(`${siteUrl}/auth/login?error=Missing+verification+code`)
   }
 
   const supabase = await createClient()
@@ -15,48 +25,16 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(`${origin}/auth/login?error=Could+not+verify+email`)
+    console.error('Email verification error:', error.message)
+
+    return NextResponse.redirect(
+      `${siteUrl}/auth/login?error=${encodeURIComponent(error.message)}`
+    )
   }
 
   if (type === 'recovery') {
-    return NextResponse.redirect(`${origin}/auth/update-password`)
+    return NextResponse.redirect(`${siteUrl}/auth/update-password`)
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.redirect(`${origin}/auth/login`)
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profile?.role === 'student') {
-    const { data: student } = await supabase
-      .from('students')
-      .select('is_onboarded')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (!student?.is_onboarded) {
-      return NextResponse.redirect(`${origin}/dashboard/student/onboarding`)
-    }
-
-    return NextResponse.redirect(`${origin}/dashboard/student`)
-  }
-
-  if (profile?.role === 'teacher') {
-    return NextResponse.redirect(`${origin}/dashboard/teacher`)
-  }
-
-  if (profile?.role === 'admin') {
-    return NextResponse.redirect(`${origin}/dashboard/admin`)
-  }
-
-  return NextResponse.redirect(`${origin}/auth/login?error=Account+profile+is+missing`)
+  return NextResponse.redirect(`${siteUrl}/auth/login?message=Email+verified+successfully`)
 }
