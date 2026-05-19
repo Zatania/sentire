@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   if (profile.role === 'student') {
     const { data: studentRow } = await supabase
       .from('students')
-      .select('student_number, year_level, section, program_id, is_onboarded')
+      .select('student_number, year_level, program_id, is_onboarded')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -114,15 +114,6 @@ export default async function ProfilePage() {
                       <input
                         name="year_level"
                         defaultValue={student?.year_level ?? ''}
-                        className="w-full border rounded-lg px-3 py-2"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Section</label>
-                      <input
-                        name="section"
-                        defaultValue={student?.section ?? ''}
                         className="w-full border rounded-lg px-3 py-2"
                       />
                     </div>

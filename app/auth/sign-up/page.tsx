@@ -180,19 +180,6 @@ export default function SignUpPage() {
                       className="bg-background border-border text-sm"
                     />
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="section" className="text-xs sm:text-sm font-medium text-card-foreground">
-                      Section
-                    </Label>
-                    <Input
-                      id="section"
-                      name="section"
-                      type="text"
-                      placeholder="A"
-                      required
-                      className="bg-background border-border text-sm"
-                    />
-                  </div>
                 </div>
               </>
             )}

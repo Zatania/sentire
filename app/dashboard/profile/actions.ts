@@ -20,7 +20,6 @@ export async function updateProfile(formData: FormData) {
 
   const fullName = text(formData.get('full_name'))
   const studentNumber = text(formData.get('student_number'))
-  const section = text(formData.get('section'))
   const yearLevelRaw = text(formData.get('year_level'))
   const yearLevel = yearLevelRaw ? Number(yearLevelRaw) : null
 
@@ -46,7 +45,6 @@ export async function updateProfile(formData: FormData) {
       .from('students')
       .update({
         student_number: studentNumber || null,
-        section: section || null,
         year_level: Number.isFinite(yearLevel) ? yearLevel : null,
       })
       .eq('user_id', user.id)

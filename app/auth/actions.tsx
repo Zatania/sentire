@@ -13,6 +13,14 @@ function text(value: FormDataEntryValue | null) {
   return String(value ?? '').trim()
 }
 
+function getSiteUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '')
+
+  return (configuredUrl || 'http://localhost:3000').replace(/\/$/, '')
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -77,7 +85,6 @@ export async function signup(formData: FormData) {
   const password = text(formData.get('password'))
   const studentNumber = text(formData.get('student_number'))
   const yearLevelRaw = text(formData.get('year_level'))
-  const section = text(formData.get('section'))
   const programId = text(formData.get('program_id'))
 
   const yearLevel = yearLevelRaw ? Number(yearLevelRaw) : null
@@ -106,14 +113,11 @@ export async function signup(formData: FormData) {
     return { error: 'Year level must be a valid number between 1 and 10.' }
   }
 
-  if (!section) {
-    return { error: 'Section is required.' }
-  }
-
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
       data: {
         full_name: fullName,
         role: 'student',
@@ -137,7 +141,8 @@ export async function signup(formData: FormData) {
     full_name: fullName,
     role: 'student',
     status: 'active',
-  })
+  },
+  { onConflict: 'id' })
 
   if (profileError) {
     await adminSupabase.auth.admin.deleteUser(userId)
@@ -149,7 +154,6 @@ export async function signup(formData: FormData) {
     student_number: studentNumber,
     program_id: programId,
     year_level: yearLevel,
-    section,
     is_onboarded: false,
   })
 

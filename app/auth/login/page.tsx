@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { login } from '@/app/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,11 +8,27 @@ import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const errorParam = params.get('error')
+    const messageParam = params.get('message')
+
+    if (errorParam) {
+      setError(errorParam.replace(/\+/g, ' '))
+    }
+
+    if (messageParam) {
+      setSuccessMessage(messageParam.replace(/\+/g, ' '))
+    }
+  }, [])
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setSuccessMessage(null)
     const formData = new FormData(e.currentTarget)
 
     startTransition(async () => {
@@ -99,6 +115,11 @@ export default function LoginPage() {
               {error && (
                 <p className="text-destructive text-xs bg-destructive/10 px-3 py-2 border border-destructive/20">
                   {error}
+                </p>
+              )}
+              {successMessage && (
+                <p className="text-green-700 text-xs bg-green-50 px-3 py-2 border border-green-200">
+                  {successMessage}
                 </p>
               )}
 
