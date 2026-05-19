@@ -18,7 +18,7 @@ function getSiteUrl() {
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '')
 
-  return (configuredUrl || 'http://localhost:3000').replace(/\/$/, '')
+  return (configuredUrl || 'http://localhost:3001').replace(/\/$/, '')
 }
 
 export async function login(formData: FormData) {
@@ -113,6 +113,45 @@ export async function signup(formData: FormData) {
     return { error: 'Year level must be a valid number between 1 and 10.' }
   }
 
+  /**
+   * Check if email already exists in profiles.
+   * This provides clearer feedback before creating an auth user.
+   */
+  const { data: existingProfile, error: existingProfileError } = await adminSupabase
+    .from('profiles')
+    .select('id, email, role')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existingProfileError) {
+    return { error: existingProfileError.message }
+  }
+
+  if (existingProfile) {
+    return {
+      error: 'An account using this email already exists. Please sign in or use Forgot Password.',
+    }
+  }
+
+  /**
+   * Check if student number already exists.
+   */
+  const { data: existingStudent, error: existingStudentError } = await adminSupabase
+    .from('students')
+    .select('user_id, student_number')
+    .eq('student_number', studentNumber)
+    .maybeSingle()
+
+  if (existingStudentError) {
+    return { error: existingStudentError.message }
+  }
+
+  if (existingStudent) {
+    return {
+      error: 'This Student ID is already registered. Please check your Student ID or contact the administrator.',
+    }
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -135,31 +174,51 @@ export async function signup(formData: FormData) {
 
   const userId = data.user.id
 
-  const { error: profileError } = await adminSupabase.from('profiles').insert({
-    id: userId,
-    email,
-    full_name: fullName,
-    role: 'student',
-    status: 'active',
-  },
-  { onConflict: 'id' })
+  const { error: profileError } = await adminSupabase
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        email,
+        full_name: fullName,
+        role: 'student',
+        status: 'active',
+      },
+      { onConflict: 'id' }
+    )
 
   if (profileError) {
     await adminSupabase.auth.admin.deleteUser(userId)
+
+    if (profileError.code === '23505') {
+      return {
+        error: 'An account using this email already exists. Please sign in or use Forgot Password.',
+      }
+    }
+
     return { error: profileError.message }
   }
 
-  const { error: studentError } = await adminSupabase.from('students').insert({
-    user_id: userId,
-    student_number: studentNumber,
-    program_id: programId,
-    year_level: yearLevel,
-    is_onboarded: false,
-  })
+  const { error: studentError } = await adminSupabase
+    .from('students')
+    .insert({
+      user_id: userId,
+      student_number: studentNumber,
+      program_id: programId,
+      year_level: yearLevel,
+      is_onboarded: false,
+    })
 
   if (studentError) {
     await adminSupabase.from('profiles').delete().eq('id', userId)
     await adminSupabase.auth.admin.deleteUser(userId)
+
+    if (studentError.code === '23505') {
+      return {
+        error: 'This Student ID is already registered. Please check your Student ID or contact the administrator.',
+      }
+    }
+
     return { error: studentError.message }
   }
 
