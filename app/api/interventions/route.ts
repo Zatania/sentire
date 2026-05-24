@@ -146,6 +146,24 @@ export async function POST(request: Request) {
       }
     }
 
+    const { data: existingOpenIntervention } = await admin
+      .from('interventions')
+      .select(
+        'id, student_id, assessment_id, created_by_teacher_id, status, risk_summary, action_plan, follow_up_date, created_at, updated_at'
+      )
+      .eq('student_id', studentId)
+      .in('status', ['open', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingOpenIntervention) {
+      return NextResponse.json({
+        intervention: existingOpenIntervention,
+        message: 'An active intervention already exists for this student.',
+      })
+    }
+
     const { data: intervention, error: insertError } = await admin
       .from('interventions')
       .insert({

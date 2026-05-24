@@ -48,8 +48,10 @@ export function AdminDashboardView({
   const [studentDetails, setStudentDetails] = React.useState<Record<string, StudentDetail>>({})
   const [loadingDetailId, setLoadingDetailId] = React.useState<string | null>(null)
   
+  const [interventionRefreshKeys, setInterventionRefreshKeys] = React.useState<Record<string, number>>({})
   const [interventionLoadingId, setInterventionLoadingId] = React.useState<string | null>(null)
   const [interventionMessage, setInterventionMessage] = React.useState<string | null>(null)
+  const [interventionError, setInterventionError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -139,6 +141,7 @@ export function AdminDashboardView({
     try {
       setInterventionLoadingId(studentId)
       setInterventionMessage(null)
+      setInterventionError(null)
 
       const row = responses.find((r) => r.student_id === studentId)
 
@@ -148,6 +151,10 @@ export function AdminDashboardView({
         body: JSON.stringify({
           studentId,
           assessmentId: row?.latest_assessment_id ?? null,
+          riskSummary:
+            row?.latest_ai_summary ||
+            row?.latest_ai_label ||
+            'Student has been flagged for wellness monitoring.',
           actionPlan:
             row?.latest_ai_summary ||
             'Schedule a wellness check-in with the student and document the support action.',
@@ -157,18 +164,25 @@ export function AdminDashboardView({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data?.error || 'Failed to initiate intervention')
+        throw new Error(data?.error || 'Failed to initiate intervention.')
       }
 
       setInterventionMessage('Intervention successfully initiated.')
+
+      setInterventionRefreshKeys((prev) => ({
+        ...prev,
+        [studentId]: (prev[studentId] || 0) + 1,
+      }))
     } catch (error) {
-      setInterventionMessage(
-        error instanceof Error ? error.message : 'Failed to initiate intervention.'
+      setInterventionError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to initiate intervention.'
       )
     } finally {
       setInterventionLoadingId(null)
     }
-  }
+    }
 
   return (
     <div className="flex min-h-screen">
@@ -282,6 +296,7 @@ export function AdminDashboardView({
                                   <StudentInsightCard
                                     student={studentDetails[response.student_id]}
                                     onIntervention={initiateIntervention}
+                                    interventionRefreshKey={interventionRefreshKeys[response.student_id] || 0}
                                   />
 
                                   {interventionLoadingId === response.student_id && (
@@ -289,7 +304,11 @@ export function AdminDashboardView({
                                   )}
 
                                   {interventionMessage && (
-                                    <p className="text-sm text-slate-700">{interventionMessage}</p>
+                                    <p className="text-sm text-green-700">{interventionMessage}</p>
+                                  )}
+
+                                  {interventionError && (
+                                    <p className="text-sm text-red-700">{interventionError}</p>
                                   )}
                                 </div>
                               ) : (

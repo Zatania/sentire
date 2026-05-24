@@ -14,6 +14,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
+import { InterventionPanel } from '@/components/intervention-panel'
 
 interface StudentData {
   id: string
@@ -57,10 +58,12 @@ export function StudentInsightCard({
   student,
   onClose,
   onIntervention,
+  interventionRefreshKey = 0,
 }: {
   student: StudentData
   onClose?: () => void
   onIntervention?: (studentId: string) => void
+  interventionRefreshKey?: number
 }) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -329,6 +332,12 @@ export function StudentInsightCard({
             </div>
           )}
         </div>
+
+        {/* Section 3: Intervention Panel */}
+        <InterventionPanel
+          studentId={student.id}
+          refreshKey={interventionRefreshKey}
+        />
 
         {/* Section 3: Action Area */}
         {analysis && (
