@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { StudentDashboardActions } from '@/components/student-dashboard-actions'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function StudentDashboardPage() {
   const supabase = await createClient()
@@ -20,17 +21,20 @@ export default async function StudentDashboardPage() {
 
   if (profile?.role !== 'student') redirect('/dashboard')
 
-  const { data: student } = await supabase
+  const admin = createAdminClient()
+
+  const { data: student } = await admin
     .from('students')
-    .select('student_number, year_level, section, is_onboarded, program_id')
+    .select('student_number, year_level, is_onboarded, program_id')
     .eq('user_id', user.id)
     .maybeSingle()
 
   let programCode: string | null = null
+
   if (student?.program_id) {
-    const { data: program } = await supabase
+    const { data: program } = await admin
       .from('programs')
-      .select('code')
+      .select('code, name')
       .eq('id', student.program_id)
       .maybeSingle()
 
@@ -65,9 +69,9 @@ export default async function StudentDashboardPage() {
           <p className="text-lg font-semibold mt-1">{programCode ?? '—'}</p>
         </div>
         <div className="bg-white border rounded-xl p-5">
-          <p className="text-sm text-slate-500">Year / Section</p>
+          <p className="text-sm text-slate-500">Year Level</p>
           <p className="text-lg font-semibold mt-1">
-            {student?.year_level ?? '—'} / {student?.section ?? '—'}
+            {student?.year_level ? `Year ${student.year_level}` : '—'}
           </p>
         </div>
         <div className="bg-white border rounded-xl p-5">

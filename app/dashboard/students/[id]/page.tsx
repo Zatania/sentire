@@ -32,7 +32,7 @@ export default async function StudentDetailPage({
 
   const { data: studentRow } = await supabase
     .from('students')
-    .select('student_number, year_level, section, program_id')
+    .select('student_number, year_level, program_id')
     .eq('user_id', params.id)
     .maybeSingle()
 
@@ -67,7 +67,7 @@ export default async function StudentDetailPage({
           <div><span className="font-medium">Student No:</span> {studentRow?.student_number ?? '—'}</div>
           <div><span className="font-medium">Program:</span> {program?.code ?? '—'}</div>
           <div><span className="font-medium">Year Level:</span> {studentRow?.year_level ?? '—'}</div>
-          <div><span className="font-medium">Section:</span> {studentRow?.section ?? '—'}</div>
+          <div><span className="font-medium">Year Level:</span> {studentRow?.year_level ?? '—'}</div>
         </div>
       </div>
 

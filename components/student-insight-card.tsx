@@ -69,6 +69,7 @@ export function StudentInsightCard({
   async function runAnalysis() {
     setLoading(true)
     setError(null)
+    setAnalysis(null)
 
     try {
       const res = await fetch('/api/analyze-student', {
@@ -84,12 +85,19 @@ export function StudentInsightCard({
         }),
       })
 
-      if (!res.ok) throw new Error('Failed to analyze')
-
       const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to analyze student data.')
+      }
+
       setAnalysis(data.analysis)
-    } catch {
-      setError('Failed to run AI analysis. Please try again.')
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to run AI analysis. Please try again.'
+      )
     } finally {
       setLoading(false)
     }
@@ -338,9 +346,14 @@ export function StudentInsightCard({
                 Initiate Intervention
                 <ArrowRight size={14} />
               </Button>
-              <Button variant="outline" onClick={runAnalysis} className="gap-2">
-                <Sparkles size={14} />
-                Re-analyze
+              <Button
+                variant="outline"
+                onClick={runAnalysis}
+                disabled={loading}
+                className="gap-2"
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {loading ? 'Re-analyzing...' : 'Re-analyze'}
               </Button>
             </div>
             {analysis.riskLevel === 'At-Risk' && (

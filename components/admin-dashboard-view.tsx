@@ -47,6 +47,9 @@ export function AdminDashboardView({
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
   const [studentDetails, setStudentDetails] = React.useState<Record<string, StudentDetail>>({})
   const [loadingDetailId, setLoadingDetailId] = React.useState<string | null>(null)
+  
+  const [interventionLoadingId, setInterventionLoadingId] = React.useState<string | null>(null)
+  const [interventionMessage, setInterventionMessage] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -130,6 +133,41 @@ export function AdminDashboardView({
     if (riskLevel === 'needs_attention') return 'Needs Attention'
     if (riskLevel === 'at_risk') return 'At Risk'
     return 'No Data'
+  }
+
+  async function initiateIntervention(studentId: string) {
+    try {
+      setInterventionLoadingId(studentId)
+      setInterventionMessage(null)
+
+      const row = responses.find((r) => r.student_id === studentId)
+
+      const res = await fetch('/api/interventions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          assessmentId: row?.latest_assessment_id ?? null,
+          actionPlan:
+            row?.latest_ai_summary ||
+            'Schedule a wellness check-in with the student and document the support action.',
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to initiate intervention')
+      }
+
+      setInterventionMessage('Intervention successfully initiated.')
+    } catch (error) {
+      setInterventionMessage(
+        error instanceof Error ? error.message : 'Failed to initiate intervention.'
+      )
+    } finally {
+      setInterventionLoadingId(null)
+    }
   }
 
   return (
@@ -240,7 +278,20 @@ export function AdminDashboardView({
                               {loadingDetailId === response.student_id ? (
                                 <p className="text-sm text-slate-500">Loading student analysis…</p>
                               ) : studentDetails[response.student_id] ? (
-                                <StudentInsightCard student={studentDetails[response.student_id]} />
+                                <div className="space-y-3">
+                                  <StudentInsightCard
+                                    student={studentDetails[response.student_id]}
+                                    onIntervention={initiateIntervention}
+                                  />
+
+                                  {interventionLoadingId === response.student_id && (
+                                    <p className="text-sm text-slate-500">Creating intervention...</p>
+                                  )}
+
+                                  {interventionMessage && (
+                                    <p className="text-sm text-slate-700">{interventionMessage}</p>
+                                  )}
+                                </div>
                               ) : (
                                 <p className="text-sm text-slate-500">Unable to load student details.</p>
                               )}
